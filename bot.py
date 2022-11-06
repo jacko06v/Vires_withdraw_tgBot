@@ -28,8 +28,7 @@ TOKEN = os.getenv("TOKEN")
 withdrawal_block = 3371040
 block = 0
 
-admin = os.getenv("ADMIN_ID")
-
+admin = int(os.getenv("ADMIN_ID"))
 
 def current_block():
     global block
@@ -53,7 +52,7 @@ async def start(update: Update, context):
         if not any(str(update.message.from_user.id) in s for s in open('chat_id.csv').readlines()):
             writer.writerow([update.message.chat_id, update.message.from_user.id, update.message.from_user.username, "onlyAlert", "0", update.message.from_user.language_code])
             print("[INFO] - User " + str(update.message.from_user.id) + " added to the csv file")
-    await update.message.reply_text('Hi! I will notify you when you can withdraw your USDN. \n\nType /help to see all the commands and /info to see info about the bot')
+    await update.message.reply_text('Hi! I will remind you how much time is left until the next withdrawal and when you can withdraw your USDN. \n\nType /help to see all the commands and /info to see info about the bot')
 
 async def callback_minute(update: Update, context):
     print("[INFO] - User " + str(update.message.from_user.id) + " set the bot to notify every minute")
@@ -126,6 +125,20 @@ async def callback_1hour(update: Update, context):
     shutil.move(tempfile.name, 'chat_id.csv')
     await update.message.reply_text('Ok!\nI will notify you every hour')
 
+async def callback_6hour(update: Update, context):
+    print("[INFO] - User " + str(update.message.from_user.id) + " set the bot to notify every 6 hours")
+    tempfile = NamedTemporaryFile('w+t', newline='', delete=False)
+    #update the csv file with the new time
+    with open('chat_id.csv', 'r', newline='') as csvFile, tempfile:
+        reader = csv.reader(csvFile, delimiter=',', quotechar='"')
+        writer = csv.writer(tempfile, delimiter=',', quotechar='"')
+        for row in reader:
+            if row[1] == str(update.message.from_user.id):
+                row[3] = "6hour"
+            writer.writerow(row)
+    shutil.move(tempfile.name, 'chat_id.csv')
+    await update.message.reply_text('Ok!\nI will notify you every 6 hours')
+
 async def callback_onlyAlert(update: Update, context):
     print("[INFO] - User " + str(update.message.from_user.id) + " set the bot to notify only when you can withdraw your USDN")
     tempfile = NamedTemporaryFile('w+t', newline='', delete=False)
@@ -184,11 +197,11 @@ async def custom_message(update: Update, context):
 
 async def info(update: Update, context):
     print("[INFO] - Sending info to user " + str(update.message.from_user.id))
-    await update.message.reply_text("Hi!\nI'm a bot that will notify you when you can withdraw your USDN.\n\nI'm not affiliated with the USDN or VIRES team, I'm just a bot that will notify you when you can withdraw your USDN.\n\nI'm open source, you can check the code here: https://github.com/jacko06v/Vires_withdraw_tgBot\n\nMy creator twitter: https://twitter.com/jahardyx and linkedIn: https://www.linkedin.com/in/jacopo-mosconi-ba5281179/")
+    await update.message.reply_text("Hi!\nI'm a bot that will notify you when you can withdraw your USDN.\n\nI'm not affiliated with the USDN or VIRES team, I'm just a bot that will notify you when you can withdraw your USDN.\n\nI'm open source, you can check the code here: https://github.com/jacko06v/Vires_withdraw_tgBot\n\nMy creator twitter: https://twitter.com/jahardyx\nand linkedIn: https://www.linkedin.com/in/jacopo-mosconi-ba5281179/")
 
 async def get_help(update: Update, context):
     print("[INFO] - Sending help to user " + str(update.message.from_user.id))
-    await update.message.reply_text("Hi!\nI'm a bot that will notify you when you can withdraw your USDN.\n\nI'm not affiliated with the USDN or VIRES team.\n\nCOMMANDS: \n\n/start - Start the bot\n/stop - Stop the bot\n/notify_1min - Be notified every minute\n/notify_5min - Be notified every 5 minutes\n/notify_10min - Be notified every 10 minutes\n/notify_30min - Be notified every 30 minutes\n/notify_1hour - Be notified every hour\n/notify_onlyAlert - Be notified only when you can withdraw your USDN\n\n/info - Get info about the bot\n/help - Get help \n\nif you want to change the time of the notification, just send the command of the time you want to be notified")
+    await update.message.reply_text("Hi!\nI'm a bot that will notify you when you can withdraw your USDN.\n\nI'm not affiliated with the USDN or VIRES team.\n\nCOMMANDS: \n\n/start - Start the bot\n/stop - Stop the bot\n/notify_1min - Be notified every minute\n/notify_5min - Be notified every 5 minutes\n/notify_10min - Be notified every 10 minutes\n/notify_30min - Be notified every 30 minutes\n/notify_1hour - Be notified every hour\n/notify_6hours - Be notified every 6 hours\n/notify_onlyAlert - Be notified only when you can withdraw your USDN\n/whenWithdraw - get info about how much time is left until next withdraw\n\n/info - Get info about the bot\n/help - Get help\n/sendFeedback - send a feedback or a comment \n\nif you want to change the time of the notification, just send the command of the time you want to be notified")
 
 async def stop(update: Update, context):
     print("[INFO] - Stopping the bot for user " + str(update.message.from_user.id))
@@ -325,8 +338,22 @@ async def notify(app):
                                     row[4] = str(time.time())
                                 writer.writerow(row)
                         shutil.move(tempfile.name, 'chat_id.csv')
-                elif row[3] == "1h":
+                elif row[3] == "1hour":
                     if time.time() >= float(row[4]) + 3600:
+                        await app.bot.send_message(chat_id=row[0], text=message())
+                        chat_id = row[0]
+                        #update the last time the user was notified
+                        tempfile = NamedTemporaryFile('w+t', newline='', delete=False)
+                        with open('chat_id.csv', 'r', newline='') as csvFile, tempfile:
+                            reader = csv.reader(csvFile, delimiter=',', quotechar='"')
+                            writer = csv.writer(tempfile, delimiter=',', quotechar='"')
+                            for row in reader:
+                                if row[0] == chat_id:
+                                    row[4] = str(time.time())
+                                writer.writerow(row)
+                        shutil.move(tempfile.name, 'chat_id.csv')
+                elif row[3] == "6hour":
+                    if time.time() >= float(row[4]) + 3600*6:
                         await app.bot.send_message(chat_id=row[0], text=message())
                         chat_id = row[0]
                         #update the last time the user was notified
@@ -369,6 +396,44 @@ async def adminInfo(update: Update, context):
     else:
         await update.message.reply_text("You are not admin")
 
+async def send_feedback(update: Update, context):
+    #create a csv file with feedback if not exist
+    if not os.path.exists('feedback.csv'):
+        with open('feedback.csv', 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["chat_id", "name", "feedback"])
+    #check if there is a message
+    message = update.message.text
+    message = message[14:]
+
+    if message == "":
+        await update.message.reply_text("Please add a message after /sendFeedback")
+        return
+    #save feedback
+    with open('feedback.csv', 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([update.message.from_user.id, update.message.from_user.first_name, message])
+    await update.message.reply_text("Thank you for your feedback")
+
+async def show_feedback(update: Update, context):
+    #only admin, print feedback
+    print(update.message.from_user.id)
+    print(admin)
+    if update.message.from_user.id == admin:
+        with open('feedback.csv', 'r') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                #skip first row
+                if row[0] == "chat_id":
+                    continue
+                await update.message.reply_text("User: " + row[1] + "\n" + "Chat id: " + row[0] + "\n" + "Feedback: " + row[2])
+    else:
+        await update.message.reply_text("You are not admin")
+
+async def when_withdraw(update: Update, context):
+    #print when you can withdraw
+    await update.message.reply_text(message())
+
 def main():
     print("[INFO] - Starting the bot")
     #create the chat_id.csv if it doesn't exist
@@ -387,17 +452,22 @@ def main():
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('help', get_help))
     app.add_handler(CommandHandler('info', info))
+    app.add_handler(CommandHandler('whenWithdraw', when_withdraw))
     app.add_handler(CommandHandler('notify_1min', callback_minute))
     app.add_handler(CommandHandler('notify_5min', callback_5min))
     app.add_handler(CommandHandler('notify_10min', callback_10min))
     app.add_handler(CommandHandler('notify_30min', callback_30min))
     app.add_handler(CommandHandler('notify_1hour', callback_1hour))
+    app.add_handler(CommandHandler('notify_6hours', callback_6hour))
     app.add_handler(CommandHandler('notify_onlyAlert', callback_onlyAlert))
     app.add_handler(CommandHandler('online', online))
     app.add_handler(CommandHandler('totalUsers', total_users))
     app.add_handler(CommandHandler('customMessage', custom_message))
     app.add_handler(CommandHandler('adminInfo', adminInfo))
     app.add_handler(CommandHandler('stop', stop))
+    app.add_handler(CommandHandler('sendFeedback', send_feedback))
+    app.add_handler(CommandHandler('showFeedback', show_feedback))
+
 
 
 
