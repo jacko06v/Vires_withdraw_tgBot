@@ -44,6 +44,7 @@ def current_block():
                 print("[INFO] - Current block: " + str(block))
                 print("[INFO] - Block when you can withdraw your USDN: " + str(withdrawal_block))
                 print("[INFO] - Blocks left: " + str(withdrawal_block - block))
+                printInfo = 0
             time.sleep(5)
     except Exception as e:
         print("[ERROR] - " + str(e))
