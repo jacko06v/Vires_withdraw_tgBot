@@ -34,17 +34,20 @@ def current_block():
     try:
         global block
         global withdrawal_block
+        printInfo = 0
         while True:
             block =  pywaves.height()
             if block == withdrawal_block + 1:
                 withdrawal_block = withdrawal_block + 1440
-            print("[INFO] - Current block: " + str(block))
-            print("[INFO] - Block when you can withdraw your USDN: " + str(withdrawal_block))
-            print("[INFO] - Blocks left: " + str(withdrawal_block - block))
+            printInfo = printInfo + 1
+            if printInfo == 12:
+                print("[INFO] - Current block: " + str(block))
+                print("[INFO] - Block when you can withdraw your USDN: " + str(withdrawal_block))
+                print("[INFO] - Blocks left: " + str(withdrawal_block - block))
             time.sleep(5)
     except Exception as e:
         print("[ERROR] - " + str(e))
-        time.sleep(5)
+        current_block()
 
 
 async def start(update: Update, context):
@@ -235,8 +238,11 @@ async def custom_message(update: Update, context):
             with open('chat_id.csv', 'r') as f:
                 reader = csv.reader(f)
                 for row in reader:
-                    #send a message to all the users
-                    await context.bot.send_message(chat_id=row[0], text=message)
+                    #skip the first row
+                    if row[0] != "chat_id":
+                        #send a message to all the users
+                        await context.bot.send_message(chat_id=row[0], text=message)
+
         else:
             await update.message.reply_text('You are not allowed to use this command')
     except Exception as e:
