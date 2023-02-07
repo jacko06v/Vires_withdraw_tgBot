@@ -12,7 +12,7 @@ import asyncio
 import datetime
 import csv
 import tracemalloc
-import pd
+import emoji
 import os
 from dotenv import load_dotenv
 from tempfile import NamedTemporaryFile
@@ -25,8 +25,8 @@ tracemalloc.start()
 #get token from .env
 TOKEN = os.getenv("TOKEN")
 
-withdrawal_block = 3372480
-block = 0
+withdrawal_block = 3478240
+block = pywaves.height()
 
 admin = int(os.getenv("ADMIN_ID"))
 
@@ -441,7 +441,7 @@ async def notify(app):
                             shutil.move(tempfile.name, 'chat_id.csv')
     except Exception as e:
         print("[ERROR] - " + str(e))
-        start_notify()
+        notify(app)
 
             
 def message():
@@ -477,7 +477,7 @@ async def adminInfo(update: Update, context):
         else:
             await update.message.reply_text("You are not admin")
     except Exception as e:
-        print("[ERROR] - " + e)
+        print("[ERROR] - " + str(e))
         #send message 
         await update.message.reply_text("Something went wrong, please try again")
 
@@ -501,7 +501,7 @@ async def send_feedback(update: Update, context):
             writer.writerow([update.message.from_user.id, update.message.from_user.first_name, message])
         await update.message.reply_text("Thank you for your feedback")
     except Exception as e:
-        print("[ERROR] - " + e)
+        print("[ERROR] - " + str(e))
         #send message 
         await update.message.reply_text("Something went wrong, please try again")
 
@@ -521,7 +521,7 @@ async def show_feedback(update: Update, context):
         else:
             await update.message.reply_text("You are not admin")
     except Exception as e:
-        print("[ERROR] - " + e)
+        print("[ERROR] - " + str(e))
         #send message 
         await update.message.reply_text("Something went wrong, please try again")
 
@@ -530,9 +530,37 @@ async def when_withdraw(update: Update, context):
         #print when you can withdraw
         await update.message.reply_text(message())
     except Exception as e:
-        print("[ERROR] - " + e)
+        print("[ERROR] - " + str(e))
         #send message 
         await update.message.reply_text("Something went wrong, please try again")
+
+async def get_lan(update: Update, context):
+    try:
+        #only admin, get percentage of language selected by users with flag emoji
+        if update.message.from_user.id == admin:
+            with open('chat_id.csv', 'r') as f:
+                reader = csv.reader(f)
+                #skip first row
+                next(reader)
+                #get all languages
+                languages = [row[5] for row in reader]
+                #get percentage of each language
+                percentages = [round(languages.count(x)/len(languages)*100, 2) for x in set(languages)]
+                #add % to each percentage
+                percentages = [str(x) + "%" for x in percentages]
+                #get flag emoji
+                flags = [emoji.emojize(flag) for flag in set(languages)]
+                #create a dictionary with flag emoji and percentage
+                d = dict(zip(flags, percentages))
+                #print dictionary
+                await update.message.reply_text(d)
+        else:
+            await update.message.reply_text("You are not admin")
+    except Exception as e:
+        print("[ERROR] - " + str(e))
+        #send message 
+        await update.message.reply_text("Something went wrong, please try again")
+
 
 def main():
     print("[INFO] - Starting the bot")
@@ -540,7 +568,7 @@ def main():
     if not os.path.exists('chat_id.csv'):
         with open('chat_id.csv', 'w') as f:
             writer = csv.writer(f)
-            writer.writerow(['chat_id', 'user_id', 'username', 'time', 'lastNotify', 'len'])
+            writer.writerow(['chat_id', 'user_id', 'username', 'time', 'lastNotify', 'lan'])
 
     t = threading.Thread(target=current_block)
     t.start()
@@ -567,8 +595,7 @@ def main():
     app.add_handler(CommandHandler('stop', stop))
     app.add_handler(CommandHandler('sendFeedback', send_feedback))
     app.add_handler(CommandHandler('showFeedback', show_feedback))
-
-
+    app.add_handler(CommandHandler('getLang', get_lan))
 
 
     print("[INFO] - Bot started")
